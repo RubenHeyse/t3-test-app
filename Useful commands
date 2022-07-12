@@ -1,0 +1,3 @@
+pscale connect test-db main --port 3309
+pnpm prisma db push
+pnpm prisma studio
