@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "prisma-studio": "npm prisma studio",
+    "connct-db": "pscale connect test-db main --port 3309",
+    "push-db": "pnpm prisma db push"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.3",
