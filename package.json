@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
-    "prisma-studio": "npm prisma studio",
+    "prisma-studio": "pnpm prisma studio",
     "connect-db": "pscale connect test-db main --port 3309",
     "push-db": "pnpm prisma db push"
   },
