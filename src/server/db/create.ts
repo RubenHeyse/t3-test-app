@@ -11,11 +11,7 @@ async function main() {
     user = {
       email: 'elsa@prisma.io',
       name: 'Elsa Prisma',
-      posts: {
-        create: {
-          title: 'Include this post!',
-        },
-      },
+      
     }
   } else {
     user = {

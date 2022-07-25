@@ -1,0 +1,211 @@
+//// ------------------------------------------------------
+//// THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+//// ------------------------------------------------------
+
+Table Account {
+  id String [pk]
+  userId String [not null]
+  type String [not null]
+  provider String [not null]
+  providerAccountId String [not null]
+  refresh_token String
+  access_token String
+  expires_at Int
+  token_type String
+  scope String
+  id_token String
+  session_state String
+  user User [not null]
+
+  indexes {
+    (provider, providerAccountId) [unique]
+  }
+}
+
+Table Session {
+  id String [pk]
+  sessionToken String [unique, not null]
+  userId String [not null]
+  expires DateTime [not null]
+  user User [not null]
+}
+
+Table User {
+  id String [pk, unique]
+  username String [not null]
+  created_at DateTime [default: `now()`, not null]
+  email String [unique, not null]
+  email_verified DateTime
+  password_hash String [not null]
+  profile_image String [not null]
+  role_id String [not null]
+  verified_symbol_id String
+  verified_equations_id String
+  submitted_equations Equation [not null]
+  submitted_symbols Symbol [not null]
+  equations_updated Equation [not null]
+  symbols_updated Symbol [not null]
+  accounts Account [not null]
+  sessions Session [not null]
+  topics_updated Topic [not null]
+  staff_of_topic StaffToTopic [not null]
+  role Role [not null]
+  verified_equations VerifiedEquation
+  verified_symbols VerifiedSymbol
+}
+
+Table VerificationToken {
+  identifier String [not null]
+  token String [unique, not null]
+  expires DateTime [not null]
+
+  indexes {
+    (identifier, token) [unique]
+  }
+}
+
+Table Role {
+  id String [pk]
+  members User [not null]
+}
+
+Table Equation {
+  id String [pk]
+  latex String [not null]
+  submitter_id String [not null]
+  updater_id String [not null]
+  verification_id String [unique]
+  status submission_status [not null]
+  topics TopicToEquation [not null]
+  symbols EquationToSymbol [not null]
+  submitted_by User [not null]
+  updated_by User [not null]
+  verification VerifiedEquation
+}
+
+Table Symbol {
+  id String [pk]
+  submitter_id String [not null]
+  updater_id String [not null]
+  latex String [not null]
+  verification_id String
+  status submission_status [not null]
+  symbol_type symbol_type [not null]
+  used_in EquationToSymbol [not null]
+  topics TopicToSymbol [not null]
+  submitted_by User [not null]
+  updated_by User [not null]
+  verification VerifiedSymbol
+}
+
+Table Topic {
+  id String [pk]
+  name String [not null]
+  updater_id String [not null]
+  updated_by User [not null]
+  parents_id String
+  parents Topic [not null]
+  topic Topic
+  equations TopicToEquation [not null]
+  symbol TopicToSymbol [not null]
+  staff StaffToTopic [not null]
+}
+
+Table VerifiedEquation {
+  id String [pk]
+  verifiers User [not null]
+  equation_id Equation
+}
+
+Table VerifiedSymbol {
+  id String [pk]
+  verified_by User [not null]
+  symbol_id String [unique, not null]
+  symbol Symbol [not null]
+}
+
+Table TopicToEquation {
+  id String [pk]
+  topic_id String [not null]
+  equation_id String [not null]
+  topic Topic [not null]
+  equation Equation [not null]
+}
+
+Table TopicToSymbol {
+  id String [pk]
+  topic_id String [not null]
+  symbol_id String [not null]
+  topic Topic [not null]
+  symbol Symbol [not null]
+}
+
+Table EquationToSymbol {
+  id String [pk]
+  symbol_id String [not null]
+  equation_id String [not null]
+  symbol Symbol [not null]
+  equation Equation [not null]
+}
+
+Table StaffToTopic {
+  id String [pk]
+  staff_id String [not null]
+  topic_id String [not null]
+  staff User [not null]
+  topic Topic [not null]
+}
+
+Enum submission_status {
+  created
+  verifying
+  active
+  deactivated
+}
+
+Enum symbol_type {
+  variable
+  constant
+}
+
+Ref: Account.userId > User.id [delete: Cascade]
+
+Ref: Session.userId > User.id [delete: Cascade]
+
+Ref: User.role_id > Role.id
+
+Ref: User.verified_equations_id > VerifiedEquation.id
+
+Ref: User.verified_symbol_id > VerifiedSymbol.id
+
+Ref: Equation.submitter_id > User.id [delete: No Action]
+
+Ref: Equation.updater_id > User.id [delete: No Action]
+
+Ref: Equation.verification_id - VerifiedEquation.id
+
+Ref: Symbol.submitter_id > User.id [delete: No Action]
+
+Ref: Symbol.updater_id > User.id [delete: No Action]
+
+Ref: Topic.updater_id > User.id
+
+Ref: Topic.parents_id > Topic.id
+
+Ref: VerifiedSymbol.symbol_id - Symbol.id
+
+Ref: TopicToEquation.topic_id > Topic.id
+
+Ref: TopicToEquation.equation_id > Equation.id
+
+Ref: TopicToSymbol.topic_id > Topic.id
+
+Ref: TopicToSymbol.symbol_id > Symbol.id
+
+Ref: EquationToSymbol.symbol_id > Symbol.id
+
+Ref: EquationToSymbol.equation_id > Equation.id
+
+Ref: StaffToTopic.staff_id > User.id
+
+Ref: StaffToTopic.topic_id > Topic.id

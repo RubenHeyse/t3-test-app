@@ -1,63 +1,205 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
+// GENERATORS
+// run: prisma generate
 generator client {
-    provider = "prisma-client-js"
-    previewFeatures = ["referentialIntegrity"]
+  provider        = "prisma-client-js"
+  previewFeatures = ["referentialIntegrity"]
 }
+
+// Open the generated dbml in https://dbdiagram.io/
+generator dbml {
+  provider = "prisma-dbml-generator"
+}
+
+generator docs {
+  provider = "node node_modules/prisma-docs-generator"
+}
+
+// SOURCES
 
 datasource db {
-    provider = "mysql"
-    // url      = "file:./db.sqlite"
-    url      = env("DATABASE_URL")
-    referentialIntegrity = "prisma"
+  provider             = "mysql"
+  // url      = "file:./db.sqlite"
+  url                  = env("DATABASE_URL")
+  referentialIntegrity = "prisma"
 }
 
-model Example {
-    id String @id @default(cuid())
+// ENUM
+
+enum submission_status {
+  created
+  verifying
+  active
+  deactivated
 }
+
+enum symbol_type {
+  variable
+  constant
+}
+
+// MODELS
+// to view schema, use https://prismaliser.app/
 
 // Necessary for Next auth
 model Account {
-    id                String  @id @default(cuid())
-    userId            String
-    type              String
-    provider          String
-    providerAccountId String
-    refresh_token     String?
-    access_token      String?
-    expires_at        Int?
-    token_type        String?
-    scope             String?
-    id_token          String?
-    session_state     String?
-    user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
 
-    @@unique([provider, providerAccountId])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
 }
 
 model Session {
-    id           String   @id @default(cuid())
-    sessionToken String   @unique
-    userId       String
-    expires      DateTime
-    user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model User {
-    id            String    @id @default(cuid())
-    name          String?
-    email         String?   @unique
-    emailVerified DateTime?
-    image         String?
-    accounts      Account[]
-    sessions      Session[]
+  id                    String    @id @unique @default(cuid())
+  username              String
+  created_at            DateTime  @default(now())
+  email                 String    @unique
+  email_verified        DateTime?
+  password_hash         String
+  profile_image         String
+  role_id               String
+  verified_symbol_id    String?
+  verified_equations_id String?
+
+  submitted_equations Equation[]     @relation("submission: equation")
+  submitted_symbols   Symbol[]       @relation("submission: symbol")
+  equations_updated   Equation[]     @relation("update: equation")
+  symbols_updated     Symbol[]       @relation("update: symbol")
+  accounts            Account[]
+  sessions            Session[]
+  topics_updated      Topic[]        @relation("update: topic")
+  staff_of_topic      StaffToTopic[] @relation("StaffToTopic: user")
+
+  role               Role              @relation("role: member", fields: [role_id], references: [id])
+  verified_equations VerifiedEquation? @relation("verified eqn: user", fields: [verified_equations_id], references: [id])
+  verified_symbols   VerifiedSymbol?   @relation("verified symbol: user", fields: [verified_symbol_id], references: [id])
 }
 
 model VerificationToken {
-    identifier String
-    token      String   @unique
-    expires    DateTime
+  identifier String
+  token      String   @unique
+  expires    DateTime
 
-    @@unique([identifier, token])
+  @@unique([identifier, token])
+}
+
+model Role {
+  id      String @id @default(cuid())
+  name  String
+  members User[] @relation("role: member")
+}
+
+model Equation {
+  id              String  @id @default(cuid())
+  latex           String
+  submitter_id    String
+  updater_id      String
+  verification_id String? @unique
+
+  status submission_status
+
+  topics  TopicToEquation[]  @relation("EquationToTopic: equation")
+  symbols EquationToSymbol[] @relation("EquationToSymbol: equation")
+
+  submitted_by User              @relation("submission: equation", fields: [submitter_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  updated_by   User              @relation("update: equation", fields: [updater_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  verification VerifiedEquation? @relation("verified eqn: equation", fields: [verification_id], references: [id])
+}
+
+model Symbol {
+  id              String  @id @default(cuid())
+  submitter_id    String
+  updater_id      String
+  latex           String
+  verification_id String?
+
+  status      submission_status
+  symbol_type symbol_type
+
+  used_in EquationToSymbol[] @relation("EquationToSymbol: symbol")
+  topics  TopicToSymbol[]    @relation("TopicToSymbol: symbol")
+
+  submitted_by User            @relation("submission: symbol", fields: [submitter_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  updated_by   User            @relation("update: symbol", fields: [updater_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  verification VerifiedSymbol? @relation("verified symbol: symbol")
+}
+
+model Topic {
+  id         String            @id @default(cuid())
+  name       String
+  updater_id String
+  updated_by User              @relation("update: topic", fields: [updater_id], references: [id])
+  parents_id String?
+  parents    Topic[]           @relation("topic: parent")
+  topic      Topic?            @relation("topic: parent", fields: [parents_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  equations  TopicToEquation[] @relation("EquationToTopic: topic")
+  symbol     TopicToSymbol[]   @relation("TopicToSymbol: topic")
+  staff      StaffToTopic[]    @relation("StaffToTopic: topic")
+
+}
+
+model VerifiedEquation {
+  id          String    @id @default(cuid())
+  verifiers   User[]    @relation("verified eqn: user")
+  equation_id Equation? @relation("verified eqn: equation")
+}
+
+model VerifiedSymbol {
+  id          String @id @default(cuid())
+  verified_by User[] @relation("verified symbol: user")
+  symbol_id   String @unique
+  symbol      Symbol @relation("verified symbol: symbol", fields: [symbol_id], references: [id])
+}
+
+// many to many refactor tables
+
+model TopicToEquation {
+  id          String   @id @default(cuid())
+  topic_id    String
+  equation_id String
+  topic       Topic    @relation("EquationToTopic: topic", fields: [topic_id], references: [id])
+  equation    Equation @relation("EquationToTopic: equation", fields: [equation_id], references: [id])
+}
+
+model TopicToSymbol {
+  id        String @id @default(cuid())
+  topic_id  String
+  symbol_id String
+  topic     Topic  @relation("TopicToSymbol: topic", fields: [topic_id], references: [id])
+  symbol    Symbol @relation("TopicToSymbol: symbol", fields: [symbol_id], references: [id])
+}
+
+model EquationToSymbol {
+  id          String   @id @default(cuid())
+  symbol_id   String
+  equation_id String
+  symbol      Symbol   @relation("EquationToSymbol: symbol", fields: [symbol_id], references: [id])
+  equation    Equation @relation("EquationToSymbol: equation", fields: [equation_id], references: [id])
+}
+
+model StaffToTopic {
+  id       String @id @default(cuid())
+  staff_id String
+  topic_id String
+  staff    User   @relation("StaffToTopic: user", fields: [staff_id], references: [id])
+  topic    Topic  @relation("StaffToTopic: topic", fields: [topic_id], references: [id])
 }
