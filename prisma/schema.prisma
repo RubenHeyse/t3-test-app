@@ -1,3 +1,8 @@
+// TODO
+// - Add support for free and paid plans
+
+//############################################################
+
 // GENERATORS
 // run: prisma generate
 generator client {
@@ -14,6 +19,8 @@ generator docs {
   provider = "node node_modules/prisma-docs-generator"
 }
 
+//############################################################
+
 // SOURCES
 
 datasource db {
@@ -22,6 +29,8 @@ datasource db {
   url                  = env("DATABASE_URL")
   referentialIntegrity = "prisma"
 }
+
+//############################################################
 
 // ENUM
 
@@ -36,6 +45,8 @@ enum symbol_type {
   variable
   constant
 }
+
+//############################################################
 
 // MODELS
 // to view schema, use https://prismaliser.app/
@@ -70,28 +81,27 @@ model Session {
 
 model User {
   id                    String    @id @unique @default(cuid())
-  username              String
-  created_at            DateTime  @default(now())
+  name                  String
   email                 String    @unique
-  email_verified        DateTime?
-  password_hash         String
-  profile_image         String
-  role_id               String
+  emailVerified         DateTime?
+  password_hash         String?
+  image                 String
+  role_id               String?
   verified_symbol_id    String?
   verified_equations_id String?
 
-  submitted_equations Equation[]     @relation("submission: equation")
-  submitted_symbols   Symbol[]       @relation("submission: symbol")
-  equations_updated   Equation[]     @relation("update: equation")
-  symbols_updated     Symbol[]       @relation("update: symbol")
+  submitted_equations Equation[]                @relation("submission: equation")
+  submitted_symbols   Symbol[]                  @relation("submission: symbol")
+  equations_updated   Equation[]                @relation("update: equation")
+  symbols_updated     Symbol[]                  @relation("update: symbol")
   accounts            Account[]
   sessions            Session[]
-  topics_updated      Topic[]        @relation("update: topic")
-  staff_of_topic      StaffToTopic[] @relation("StaffToTopic: user")
+  topics_updated      Topic[]                   @relation("update: topic")
+  staff_of_topic      StaffOnTopic[]            @relation("StaffOnTopic: user")
+  verified_equations  StaffOnVerifiedEquation[] @relation("StaffOnVerifiedEquation: user")
+  verified_symbols    StaffOnVerifiedSymbol[]   @relation("StaffOnVerifiedSymbol: user")
 
-  role               Role              @relation("role: member", fields: [role_id], references: [id])
-  verified_equations VerifiedEquation? @relation("verified eqn: user", fields: [verified_equations_id], references: [id])
-  verified_symbols   VerifiedSymbol?   @relation("verified symbol: user", fields: [verified_symbol_id], references: [id])
+  role Role? @relation("role: member", fields: [role_id], references: [id])
 }
 
 model VerificationToken {
@@ -104,7 +114,7 @@ model VerificationToken {
 
 model Role {
   id      String @id @default(cuid())
-  name  String
+  name    String
   members User[] @relation("role: member")
 }
 
@@ -118,11 +128,11 @@ model Equation {
   status submission_status
 
   topics  TopicToEquation[]  @relation("EquationToTopic: equation")
-  symbols EquationToSymbol[] @relation("EquationToSymbol: equation")
+  symbols SymbolInEquation[] @relation("SymbolInEquation: equation")
 
-  submitted_by User              @relation("submission: equation", fields: [submitter_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  updated_by   User              @relation("update: equation", fields: [updater_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  verification VerifiedEquation? @relation("verified eqn: equation", fields: [verification_id], references: [id])
+  submitted_by User              @relation("submission: equation", fields: [submitter_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  updated_by   User              @relation("update: equation", fields: [updater_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  verification VerifiedEquation? @relation("verified eqn: equation", fields: [verification_id], references: [id], onDelete: Cascade)
 }
 
 model Symbol {
@@ -135,12 +145,12 @@ model Symbol {
   status      submission_status
   symbol_type symbol_type
 
-  used_in EquationToSymbol[] @relation("EquationToSymbol: symbol")
-  topics  TopicToSymbol[]    @relation("TopicToSymbol: symbol")
+  used_in SymbolInEquation[] @relation("SymbolInEquation: symbol")
+  topics  SymbolInTopic[]    @relation("SymbolInTopic: symbol")
 
   submitted_by User            @relation("submission: symbol", fields: [submitter_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   updated_by   User            @relation("update: symbol", fields: [updater_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  verification VerifiedSymbol? @relation("verified symbol: symbol")
+  verification VerifiedSymbol? @relation("VerifiedSymbol: symbol")
 }
 
 model Topic {
@@ -152,54 +162,79 @@ model Topic {
   parents    Topic[]           @relation("topic: parent")
   topic      Topic?            @relation("topic: parent", fields: [parents_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   equations  TopicToEquation[] @relation("EquationToTopic: topic")
-  symbol     TopicToSymbol[]   @relation("TopicToSymbol: topic")
-  staff      StaffToTopic[]    @relation("StaffToTopic: topic")
+  symbol     SymbolInTopic[]   @relation("SymbolInTopic: topic")
+  staff      StaffOnTopic[]    @relation("StaffOnTopic: topic")
 
 }
 
 model VerifiedEquation {
-  id          String    @id @default(cuid())
-  verifiers   User[]    @relation("verified eqn: user")
-  equation_id Equation? @relation("verified eqn: equation")
+  id          String                    @id @default(cuid())
+  verifiers   StaffOnVerifiedEquation[] @relation("StaffOnVerifiedEquation: equation")
+  equation_id Equation?                 @relation("verified eqn: equation")
 }
 
 model VerifiedSymbol {
-  id          String @id @default(cuid())
-  verified_by User[] @relation("verified symbol: user")
-  symbol_id   String @unique
-  symbol      Symbol @relation("verified symbol: symbol", fields: [symbol_id], references: [id])
+  id          String                  @id @default(cuid())
+  verified_by StaffOnVerifiedSymbol[] @relation("StaffOnVerifiedSymbol: symbol")
+  symbol_id   String                  @unique
+  symbol      Symbol                  @relation("VerifiedSymbol: symbol", fields: [symbol_id], references: [id])
 }
 
+//############################################################
+
 // many to many refactor tables
+// primary keys are composite
 
 model TopicToEquation {
-  id          String   @id @default(cuid())
   topic_id    String
   equation_id String
   topic       Topic    @relation("EquationToTopic: topic", fields: [topic_id], references: [id])
   equation    Equation @relation("EquationToTopic: equation", fields: [equation_id], references: [id])
+
+  @@id([equation_id, topic_id])
 }
 
-model TopicToSymbol {
-  id        String @id @default(cuid())
+model SymbolInTopic {
   topic_id  String
   symbol_id String
-  topic     Topic  @relation("TopicToSymbol: topic", fields: [topic_id], references: [id])
-  symbol    Symbol @relation("TopicToSymbol: symbol", fields: [symbol_id], references: [id])
+  topic     Topic  @relation("SymbolInTopic: topic", fields: [topic_id], references: [id])
+  symbol    Symbol @relation("SymbolInTopic: symbol", fields: [symbol_id], references: [id])
+
+  @@id([symbol_id, topic_id])
 }
 
-model EquationToSymbol {
-  id          String   @id @default(cuid())
+model SymbolInEquation {
   symbol_id   String
   equation_id String
-  symbol      Symbol   @relation("EquationToSymbol: symbol", fields: [symbol_id], references: [id])
-  equation    Equation @relation("EquationToSymbol: equation", fields: [equation_id], references: [id])
+  symbol      Symbol   @relation("SymbolInEquation: symbol", fields: [symbol_id], references: [id])
+  equation    Equation @relation("SymbolInEquation: equation", fields: [equation_id], references: [id])
+
+  @@id([equation_id, symbol_id])
 }
 
-model StaffToTopic {
-  id       String @id @default(cuid())
+model StaffOnTopic {
   staff_id String
   topic_id String
-  staff    User   @relation("StaffToTopic: user", fields: [staff_id], references: [id])
-  topic    Topic  @relation("StaffToTopic: topic", fields: [topic_id], references: [id])
+  staff    User   @relation("StaffOnTopic: user", fields: [staff_id], references: [id])
+  topic    Topic  @relation("StaffOnTopic: topic", fields: [topic_id], references: [id])
+
+  @@id([staff_id, topic_id])
+}
+
+model StaffOnVerifiedEquation {
+  staff_id             String
+  verified_equation_id String
+  staff                User             @relation("StaffOnVerifiedEquation: user", fields: [staff_id], references: [id])
+  verified_equation    VerifiedEquation @relation("StaffOnVerifiedEquation: equation", fields: [verified_equation_id], references: [id])
+
+  @@id([staff_id, verified_equation_id])
+}
+
+model StaffOnVerifiedSymbol {
+  staff_id           String
+  verified_symbol_id String
+  staff              User           @relation("StaffOnVerifiedSymbol: user", fields: [staff_id], references: [id])
+  verified_symbol    VerifiedSymbol @relation("StaffOnVerifiedSymbol: symbol", fields: [verified_symbol_id], references: [id])
+
+  @@id([staff_id, verified_symbol_id])
 }

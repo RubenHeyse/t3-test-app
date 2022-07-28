@@ -32,13 +32,12 @@ Table Session {
 
 Table User {
   id String [pk, unique]
-  username String [not null]
-  created_at DateTime [default: `now()`, not null]
+  name String [not null]
   email String [unique, not null]
-  email_verified DateTime
-  password_hash String [not null]
-  profile_image String [not null]
-  role_id String [not null]
+  emailVerified DateTime
+  password_hash String
+  image String [not null]
+  role_id String
   verified_symbol_id String
   verified_equations_id String
   submitted_equations Equation [not null]
@@ -48,8 +47,8 @@ Table User {
   accounts Account [not null]
   sessions Session [not null]
   topics_updated Topic [not null]
-  staff_of_topic StaffToTopic [not null]
-  role Role [not null]
+  staff_of_topic StaffOnTopic [not null]
+  role Role
   verified_equations VerifiedEquation
   verified_symbols VerifiedSymbol
 }
@@ -66,6 +65,7 @@ Table VerificationToken {
 
 Table Role {
   id String [pk]
+  name String [not null]
   members User [not null]
 }
 
@@ -77,7 +77,7 @@ Table Equation {
   verification_id String [unique]
   status submission_status [not null]
   topics TopicToEquation [not null]
-  symbols EquationToSymbol [not null]
+  symbols SymbolInEquation [not null]
   submitted_by User [not null]
   updated_by User [not null]
   verification VerifiedEquation
@@ -91,8 +91,8 @@ Table Symbol {
   verification_id String
   status submission_status [not null]
   symbol_type symbol_type [not null]
-  used_in EquationToSymbol [not null]
-  topics TopicToSymbol [not null]
+  used_in SymbolInEquation [not null]
+  topics SymbolInTopic [not null]
   submitted_by User [not null]
   updated_by User [not null]
   verification VerifiedSymbol
@@ -107,8 +107,8 @@ Table Topic {
   parents Topic [not null]
   topic Topic
   equations TopicToEquation [not null]
-  symbol TopicToSymbol [not null]
-  staff StaffToTopic [not null]
+  symbol SymbolInTopic [not null]
+  staff StaffOnTopic [not null]
 }
 
 Table VerifiedEquation {
@@ -132,7 +132,7 @@ Table TopicToEquation {
   equation Equation [not null]
 }
 
-Table TopicToSymbol {
+Table SymbolInTopic {
   id String [pk]
   topic_id String [not null]
   symbol_id String [not null]
@@ -140,7 +140,7 @@ Table TopicToSymbol {
   symbol Symbol [not null]
 }
 
-Table EquationToSymbol {
+Table SymbolInEquation {
   id String [pk]
   symbol_id String [not null]
   equation_id String [not null]
@@ -148,7 +148,7 @@ Table EquationToSymbol {
   equation Equation [not null]
 }
 
-Table StaffToTopic {
+Table StaffOnTopic {
   id String [pk]
   staff_id String [not null]
   topic_id String [not null]
@@ -198,14 +198,14 @@ Ref: TopicToEquation.topic_id > Topic.id
 
 Ref: TopicToEquation.equation_id > Equation.id
 
-Ref: TopicToSymbol.topic_id > Topic.id
+Ref: SymbolInTopic.topic_id > Topic.id
 
-Ref: TopicToSymbol.symbol_id > Symbol.id
+Ref: SymbolInTopic.symbol_id > Symbol.id
 
-Ref: EquationToSymbol.symbol_id > Symbol.id
+Ref: SymbolInEquation.symbol_id > Symbol.id
 
-Ref: EquationToSymbol.equation_id > Equation.id
+Ref: SymbolInEquation.equation_id > Equation.id
 
-Ref: StaffToTopic.staff_id > User.id
+Ref: StaffOnTopic.staff_id > User.id
 
-Ref: StaffToTopic.topic_id > Topic.id
+Ref: StaffOnTopic.topic_id > Topic.id
