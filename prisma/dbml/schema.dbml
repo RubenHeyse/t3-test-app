@@ -48,9 +48,9 @@ Table User {
   sessions Session [not null]
   topics_updated Topic [not null]
   staff_of_topic StaffOnTopic [not null]
+  verified_equations StaffOnVerifiedEquation [not null]
+  verified_symbols StaffOnVerifiedSymbol [not null]
   role Role
-  verified_equations VerifiedEquation
-  verified_symbols VerifiedSymbol
 }
 
 Table VerificationToken {
@@ -113,47 +113,81 @@ Table Topic {
 
 Table VerifiedEquation {
   id String [pk]
-  verifiers User [not null]
+  verifiers StaffOnVerifiedEquation [not null]
   equation_id Equation
 }
 
 Table VerifiedSymbol {
   id String [pk]
-  verified_by User [not null]
+  verified_by StaffOnVerifiedSymbol [not null]
   symbol_id String [unique, not null]
   symbol Symbol [not null]
 }
 
 Table TopicToEquation {
-  id String [pk]
   topic_id String [not null]
   equation_id String [not null]
   topic Topic [not null]
   equation Equation [not null]
+
+  indexes {
+    (equation_id, topic_id) [pk]
+  }
 }
 
 Table SymbolInTopic {
-  id String [pk]
   topic_id String [not null]
   symbol_id String [not null]
   topic Topic [not null]
   symbol Symbol [not null]
+
+  indexes {
+    (symbol_id, topic_id) [pk]
+  }
 }
 
 Table SymbolInEquation {
-  id String [pk]
   symbol_id String [not null]
   equation_id String [not null]
   symbol Symbol [not null]
   equation Equation [not null]
+
+  indexes {
+    (equation_id, symbol_id) [pk]
+  }
 }
 
 Table StaffOnTopic {
-  id String [pk]
   staff_id String [not null]
   topic_id String [not null]
   staff User [not null]
   topic Topic [not null]
+
+  indexes {
+    (staff_id, topic_id) [pk]
+  }
+}
+
+Table StaffOnVerifiedEquation {
+  staff_id String [not null]
+  verified_equation_id String [not null]
+  staff User [not null]
+  verified_equation VerifiedEquation [not null]
+
+  indexes {
+    (staff_id, verified_equation_id) [pk]
+  }
+}
+
+Table StaffOnVerifiedSymbol {
+  staff_id String [not null]
+  verified_symbol_id String [not null]
+  staff User [not null]
+  verified_symbol VerifiedSymbol [not null]
+
+  indexes {
+    (staff_id, verified_symbol_id) [pk]
+  }
 }
 
 Enum submission_status {
@@ -174,15 +208,11 @@ Ref: Session.userId > User.id [delete: Cascade]
 
 Ref: User.role_id > Role.id
 
-Ref: User.verified_equations_id > VerifiedEquation.id
+Ref: Equation.submitter_id > User.id [delete: Set Null]
 
-Ref: User.verified_symbol_id > VerifiedSymbol.id
+Ref: Equation.updater_id > User.id [delete: Set Null]
 
-Ref: Equation.submitter_id > User.id [delete: No Action]
-
-Ref: Equation.updater_id > User.id [delete: No Action]
-
-Ref: Equation.verification_id - VerifiedEquation.id
+Ref: Equation.verification_id - VerifiedEquation.id [delete: Cascade]
 
 Ref: Symbol.submitter_id > User.id [delete: No Action]
 
@@ -209,3 +239,11 @@ Ref: SymbolInEquation.equation_id > Equation.id
 Ref: StaffOnTopic.staff_id > User.id
 
 Ref: StaffOnTopic.topic_id > Topic.id
+
+Ref: StaffOnVerifiedEquation.staff_id > User.id
+
+Ref: StaffOnVerifiedEquation.verified_equation_id > VerifiedEquation.id
+
+Ref: StaffOnVerifiedSymbol.staff_id > User.id
+
+Ref: StaffOnVerifiedSymbol.verified_symbol_id > VerifiedSymbol.id
